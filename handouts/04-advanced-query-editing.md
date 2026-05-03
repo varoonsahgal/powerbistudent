@@ -349,6 +349,120 @@ The selected queries are now collapsed under a folder in the Queries pane. This 
 
 ---
 
+## Part 10: Dynamic Data Source Parameters
+
+**Dynamic data source parameters** let you replace hard-coded connection values — such as a server address or database schema name — with named, reusable variables. This makes it possible to switch between environments (for example, development and production) without manually editing each table's source connection one at a time.
+
+Parameters are managed from the **Home** ribbon in Power Query Editor, to the left of **Data Source Settings**.
+
+### When Parameters Are Useful
+
+- Your report connects to multiple database environments (development, test, production) and you need to switch between them quickly.
+- Multiple queries all connect to the same server or schema — parameters let you update all of them in one step.
+- You want team members to be able to change the connection target without editing M code directly.
+
+### Enabling Parameter Support in Source Steps
+
+By default, the source step dialog may only allow text input. To unlock parameter selection:
+
+1. In Power Query Editor, click the **View** menu.
+2. Check **Always Allow Parameters**.
+3. When you now click into a source step, the Server and Database fields show a dropdown that lets you choose between a text value, an existing parameter, or **New Parameter**.
+
+---
+
+## Exercise 7: Create and Apply Data Source Parameters
+
+**Goal:** Replace hard-coded server and schema values in a database connection with named parameters, so all connected queries update when you change a single value.
+
+> **Context:** This exercise uses a MySQL database connection (with two schemas named `mavenfuzzyfactory_development` and `mavenfuzzyfactory_production`) to illustrate the concept. The same workflow applies to SQL Server, PostgreSQL, and other database connectors.
+
+### Step 1 — Create a Server Parameter
+
+1. In Power Query Editor, click **Home** > **Manage Parameters** > **New Parameter**.
+2. In the **Manage Parameters** dialog, configure the following:
+
+   | Field | Value |
+   |---|---|
+   | **Name** | `Server - Fuzzy Factory` |
+   | **Type** | `Text` |
+   | **Suggested Values** | `Any value` |
+   | **Current Value** | Your server address (for example, `127.0.0.1` for a local machine) |
+
+3. Click **OK**.
+4. The new parameter appears in the Queries pane. Move it into a `Demo Queries` group to keep the pane organized.
+
+### Step 2 — Create a Database Parameter with a List of Values
+
+1. Return to **Manage Parameters** and click **New**.
+2. Configure the following:
+
+   | Field | Value |
+   |---|---|
+   | **Name** | `Database - Fuzzy Factory` |
+   | **Type** | `Text` |
+   | **Suggested Values** | `List of values` |
+   | **List entries** | `mavenfuzzyfactory_development` and `mavenfuzzyfactory_production` |
+   | **Default Value** | `mavenfuzzyfactory_development` |
+   | **Current Value** | `mavenfuzzyfactory_development` |
+
+3. Click **OK**.
+
+> **Set the default value deliberately.** In a team environment, defaulting to the development schema prevents accidental refreshes against production data.
+
+### Step 3 — Apply Parameters to the Data Source Connection
+
+1. In Power Query Editor, click **Home** > **Data Source Settings**.
+2. Select the database connection and click **Change Source**.
+3. In the **Server** field, click the dropdown and choose **Parameter** > `Server - Fuzzy Factory`.
+4. In the **Database** field, click the dropdown and choose **Parameter** > `Database - Fuzzy Factory`.
+5. Click **OK** > **Close**.
+
+**Expected result:** Click the `Source` step in any connected table's Applied Steps pane. The formula bar should now show the parameter names instead of hard-coded text strings.
+
+### Step 4 — Fix the Navigation Step
+
+After parameterizing the source, the **Navigation** step (which specifies the schema and table name) may still contain a hard-coded schema string. To fix this:
+
+1. Click the affected query in the Queries pane.
+2. In the Applied Steps pane, click the **Navigation** step.
+3. In the formula bar, locate the hard-coded schema name (for example, `"mavenfuzzyfactory_development"`) and replace it with the parameter reference. Copy the parameter reference syntax from the Source step as a guide.
+4. Repeat for every query connected to this database.
+
+> **M code is case-sensitive.** Take care not to accidentally delete a comma or parenthesis while editing the formula bar. A single misplaced character breaks the query, and the error message may not clearly point to the cause.
+
+**Expected result:** Every table query now references the `Database - Fuzzy Factory` parameter in both the Source step and the Navigation step.
+
+### Step 5 — Switch Between Environments
+
+Once parameters are wired up, you can switch environments from the Power BI front end — no need to open the Query Editor.
+
+1. On the **Home** ribbon (in the main Power BI view, not in Power Query Editor), click the dropdown on **Transform Data**.
+2. Select **Edit Parameters**.
+3. Change the `Database - Fuzzy Factory` value from `mavenfuzzyfactory_development` to `mavenfuzzyfactory_production`.
+4. Click **OK**. Power BI applies the change and refreshes all connected queries against the new schema.
+
+**Expected result:** All tables reload from the production schema. Any visuals or measures built on those tables automatically reflect the production data.
+
+> **This works cleanly only when both schemas share identical table structures.** If the schemas differ in column names, data types, or table names, some queries or visuals may break when switching.
+>
+> **Before using this pattern in production, verify schema consistency by:**
+> - Confirming both environments contain the same set of table names.
+> - Confirming each shared table has the same column names and column order.
+> - Confirming data types are consistent across environments (for example, a column is `Int64` in development and not `Text` in production).
+> - Doing a test switch to the secondary environment and checking that all queries load without errors before relying on this setup in a shared or published report.
+
+---
+
+### Checkpoint ✅
+
+- Both parameters (`Server - Fuzzy Factory` and `Database - Fuzzy Factory`) appear in the Queries pane.
+- The Source step of every connected query references the parameters instead of literal strings.
+- The Navigation step of every connected query references the `Database - Fuzzy Factory` parameter.
+- You can switch between `development` and `production` from **Transform Data > Edit Parameters** without touching individual queries.
+
+---
+
 ## Key Takeaways
 
 - **Add columns as close to the source as possible** for the best model performance.
@@ -360,3 +474,4 @@ The selected queries are now collapsed under a folder in the Queries pane. This 
 - The **folder connector** is the recommended way to append multiple files — it creates one clean query, scales automatically as new files are added, and avoids dependency chains.
 - Power BI stores **exact file paths**. Renaming or moving a connected file breaks the connection. Use **Data Source Settings** or the **Source step gear icon** to repair it.
 - Applied steps are preserved when fixing broken sources — no transformation work is lost.
+- **Dynamic data source parameters** replace hard-coded connection values with named variables. They allow all connected queries to be updated in one step and make environment switching (development ↔ production) possible from the Power BI front end without editing individual queries.
